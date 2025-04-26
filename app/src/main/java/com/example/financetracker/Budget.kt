@@ -31,11 +31,7 @@ class Budget : AppCompatActivity() {
     private val wallets = mutableListOf<WalletData>()
     private val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
     private lateinit var sharedPreferences: SharedPreferences
-
-    // For authentication - in a real app, these would come from a secure source
-    // This is just for demonstration
-    private val USERNAME = "admin"
-    private val PASSWORD = "admin123"
+    private lateinit var userPreferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +40,7 @@ class Budget : AppCompatActivity() {
 
         // Initialize SharedPreferences
         sharedPreferences = getSharedPreferences("wallet_prefs", Context.MODE_PRIVATE)
+        userPreferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
 
         // Initialize views
         walletsContainer = findViewById(R.id.wallets_container)
@@ -225,25 +222,44 @@ class Budget : AppCompatActivity() {
         val usernameEditText = dialogView.findViewById<EditText>(R.id.edit_username)
         val passwordEditText = dialogView.findViewById<EditText>(R.id.edit_password)
 
+        // Use email field instead of username for consistency with login system
+        usernameEditText.hint = "Email"
+
         AlertDialog.Builder(this)
             .setTitle("Authentication Required")
-            .setMessage("Please enter your username and password to delete this wallet")
+            .setMessage("Please enter your email and password to delete this wallet")
             .setView(dialogView)
             .setPositiveButton("Delete") { _, _ ->
-                val username = usernameEditText.text.toString()
-                val password = passwordEditText.text.toString()
+                val email = usernameEditText.text.toString().trim()
+                val password = passwordEditText.text.toString().trim()
 
-                // Check credentials
-                if (username == USERNAME && password == PASSWORD) {
-                    // Credentials match, proceed with deletion
-                    deleteWallet(walletIndex)
-                } else {
-                    // Authentication failed
-                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
-                }
+                // Check credentials against stored user credentials
+                authenticateAndDelete(email, password, walletIndex)
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun authenticateAndDelete(email: String, password: String, walletIndex: Int) {
+        // First check if user is logged in
+        val isLoggedIn = userPreferences.getBoolean("is_logged_in", false)
+        
+        if (!isLoggedIn) {
+            Toast.makeText(this, "You must be logged in to delete wallets", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Get stored credentials from UserPrefs
+        val savedEmail = userPreferences.getString("user_email", null)
+        val savedPassword = userPreferences.getString("user_password", null)
+        
+        if (email == savedEmail && password == savedPassword) {
+            // Credentials match, proceed with deletion
+            deleteWallet(walletIndex)
+        } else {
+            // Authentication failed
+            Toast.makeText(this, "Authentication failed. Invalid email or password.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun deleteWallet(index: Int) {

@@ -9,6 +9,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import android.widget.ImageView
+import android.text.method.PasswordTransformationMethod
+import android.text.method.HideReturnsTransformationMethod
 
 class Login : AppCompatActivity() {
 
@@ -16,6 +19,8 @@ class Login : AppCompatActivity() {
     private lateinit var passwordEditText: EditText
     private lateinit var continueButton: Button
     private lateinit var dontHaveAccountText: TextView
+    private lateinit var passwordVisibilityToggle: ImageView
+    private var isPasswordVisible = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +32,12 @@ class Login : AppCompatActivity() {
         passwordEditText = findViewById(R.id.passwordInput)
         continueButton = findViewById(R.id.continueButton)
         dontHaveAccountText = findViewById(R.id.dontHaveAccount)
+        passwordVisibilityToggle = findViewById(R.id.passwordVisibility)
+
+        // Setup password visibility toggle
+        passwordVisibilityToggle.setOnClickListener {
+            togglePasswordVisibility()
+        }
 
         continueButton.setOnClickListener {
             val enteredEmail = emailEditText.text.toString().trim()
@@ -44,6 +55,23 @@ class Login : AppCompatActivity() {
             startActivity(intent)
             finish() // Close Login screen
         }
+    }
+
+    private fun togglePasswordVisibility() {
+        isPasswordVisible = !isPasswordVisible
+        
+        if (isPasswordVisible) {
+            // Show password
+            passwordEditText.transformationMethod = HideReturnsTransformationMethod.getInstance()
+            passwordVisibilityToggle.setImageResource(R.drawable.ic_visibility_off)
+        } else {
+            // Hide password
+            passwordEditText.transformationMethod = PasswordTransformationMethod.getInstance()
+            passwordVisibilityToggle.setImageResource(R.drawable.ic_visibility)
+        }
+        
+        // Maintain cursor position
+        passwordEditText.setSelection(passwordEditText.text.length)
     }
 
     private fun loginUser(email: String, password: String) {

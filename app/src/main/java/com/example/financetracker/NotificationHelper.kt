@@ -11,7 +11,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class NotificationHelper(private val context: Context) {
 
@@ -28,10 +32,13 @@ class NotificationHelper(private val context: Context) {
         const val NOTIFICATION_ID_LOW_BALANCE = 1004
         const val NOTIFICATION_ID_WALLET_ADDED = 1005
         const val NOTIFICATION_ID_BACKUP_REMINDER = 1006
+        const val NOTIFICATION_ID_DAILY_SUMMARY = 1007
     }
 
     private val notificationManager: NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
     init {
         createNotificationChannels()
@@ -180,6 +187,166 @@ class NotificationHelper(private val context: Context) {
         saveNotification(title, message)
     }
 
+    // Daily Expense Summary notification (11 PM)
+    fun showDailyExpenseSummary() {
+        val (totalExpenses, totalIncome, expensesByCategory) = getDailyFinancialSummary()
+        
+        val title = "Today's Expense Summary"
+        val message = if (totalExpenses > 0) {
+            "Today you spent ${currencyFormat.format(totalExpenses)}"
+        } else {
+            "No expenses recorded today. Great job!"
+        }
+        
+        // Create a big text style to show more details in the expanded notification
+        val bigTextStyle = NotificationCompat.BigTextStyle()
+            .setBigContentTitle(title)
+        
+        val summaryText = buildSummaryText(totalExpenses, totalIncome, expensesByCategory)
+        bigTextStyle.bigText(summaryText)
+        
+        val intent = Intent(context, Transactions::class.java)
+        
+        // Create a back stack to ensure proper navigation
+        val backIntent = Intent(context, MainActivity::class.java)
+        backIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
+        val stackBuilder = android.app.TaskStackBuilder.create(context)
+        stackBuilder.addNextIntentWithParentStack(intent)
+        
+        val pendingIntent = stackBuilder.getPendingIntent(
+            NOTIFICATION_ID_DAILY_SUMMARY,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID_REMINDERS)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setSmallIcon(R.drawable.ic_reminder)
+            .setColor(ContextCompat.getColor(context, R.color.colorPrimary))
+            .setContentIntent(pendingIntent)
+            .setStyle(bigTextStyle)
+            .setAutoCancel(true)
+            // Make notification more prominent for push notifications
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Set sound, vibration, and lights
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            // Show on lock screen
+            .setFullScreenIntent(pendingIntent, true)
+            .build()
+        
+        notificationManager.notify(NOTIFICATION_ID_DAILY_SUMMARY, notification)
+        saveNotification(title, message)
+    }
+    
+    private fun buildSummaryText(
+        totalExpenses: Double, 
+        totalIncome: Double, 
+        expensesByCategory: Map<String, Double>
+    ): String {
+        val stringBuilder = StringBuilder()
+        stringBuilder.append("Today's summary:\n")
+        
+        // Add total expenses
+        stringBuilder.append("Total spent: ${currencyFormat.format(totalExpenses)}\n")
+        
+        // Add total income
+        if (totalIncome > 0) {
+            stringBuilder.append("Total income: ${currencyFormat.format(totalIncome)}\n")
+        }
+        
+        // Add expenses by category if there are any
+        if (expensesByCategory.isNotEmpty()) {
+            stringBuilder.append("\nTop expenses by category:\n")
+            expensesByCategory.entries
+                .sortedByDescending { it.value }
+                .take(3)  // Top 3 categories
+                .forEach { (category, amount) ->
+                    stringBuilder.append("- $category: ${currencyFormat.format(amount)}\n")
+                }
+        }
+        
+        return stringBuilder.toString()
+    }
+    
+    private fun getDailyFinancialSummary(): Triple<Double, Double, Map<String, Double>> {
+        val sharedPreferences = context.getSharedPreferences("wallet_prefs", Context.MODE_PRIVATE)
+        var totalExpenses = 0.0
+        var totalIncome = 0.0
+        val expensesByCategory = mutableMapOf<String, Double>()
+        
+        // Get today's date range
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.timeInMillis
+        
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendar.timeInMillis
+        
+        // Get all wallets
+        val walletsJson = sharedPreferences.getString("wallets", null)
+        if (walletsJson != null) {
+            try {
+                val jsonArray = JSONArray(walletsJson)
+                
+                // Process each wallet
+                for (i in 0 until jsonArray.length()) {
+                    val wallet = jsonArray.getJSONObject(i)
+                    val walletName = wallet.getString("name")
+                    
+                    // Get transactions for this wallet
+                    val transactionsKey = "transactions_$walletName"
+                    val transactionsJson = sharedPreferences.getString(transactionsKey, null)
+                    
+                    if (transactionsJson != null) {
+                        val transactionsArray = JSONArray(transactionsJson)
+                        
+                        // Process each transaction
+                        for (j in 0 until transactionsArray.length()) {
+                            val transaction = transactionsArray.getJSONObject(j)
+                            val dateStr = transaction.getString("date")
+                            
+                            try {
+                                val transactionDate = dateFormat.parse(dateStr)
+                                val transactionTime = transactionDate?.time ?: 0
+                                
+                                // Check if transaction is from today
+                                if (transactionTime in startOfDay..endOfDay) {
+                                    val amount = transaction.getDouble("amount")
+                                    val isIncome = transaction.getBoolean("isIncome")
+                                    
+                                    if (isIncome) {
+                                        totalIncome += amount
+                                    } else {
+                                        totalExpenses += amount
+                                        
+                                        // Track expenses by category
+                                        val category = transaction.getString("category")
+                                        expensesByCategory[category] = (expensesByCategory[category] ?: 0.0) + amount
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        
+        return Triple(totalExpenses, totalIncome, expensesByCategory)
+    }
+
     // Generic method to show notification
     private fun showNotification(
         notificationId: Int,
@@ -189,10 +356,15 @@ class NotificationHelper(private val context: Context) {
         intent: Intent,
         icon: Int
     ) {
-        val pendingIntent = PendingIntent.getActivity(
-            context,
+        // Create a back stack to ensure proper navigation
+        val backIntent = Intent(context, MainActivity::class.java)
+        backIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
+        val stackBuilder = android.app.TaskStackBuilder.create(context)
+        stackBuilder.addNextIntentWithParentStack(intent)
+        
+        val pendingIntent = stackBuilder.getPendingIntent(
             notificationId,
-            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -203,6 +375,14 @@ class NotificationHelper(private val context: Context) {
             .setColor(ContextCompat.getColor(context, R.color.colorPrimary))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            // Make notification more prominent for push notifications
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Set sound, vibration, and lights
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            // Show on lock screen
+            .setFullScreenIntent(pendingIntent, true)
             .build()
 
         notificationManager.notify(notificationId, notification)

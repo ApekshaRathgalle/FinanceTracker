@@ -10,11 +10,13 @@ import java.util.Calendar
 class NotificationScheduler {
 
     companion object {
-        private const val ACTION_DAILY_REMINDER = "com.example.financetracker.DAILY_REMINDER"
-        private const val ACTION_BACKUP_REMINDER = "com.example.financetracker.BACKUP_REMINDER"
+        const val ACTION_DAILY_REMINDER = "com.example.financetracker.DAILY_REMINDER"
+        const val ACTION_BACKUP_REMINDER = "com.example.financetracker.BACKUP_REMINDER"
+        const val ACTION_DAILY_SUMMARY = "com.example.financetracker.DAILY_SUMMARY"
 
-        private const val REQUEST_CODE_DAILY = 2001
-        private const val REQUEST_CODE_BACKUP = 2002
+        const val REQUEST_CODE_DAILY = 2001
+        const val REQUEST_CODE_BACKUP = 2002
+        const val REQUEST_CODE_SUMMARY = 2003
     }
 
     // Schedule daily expense reminder (9 PM every day)
@@ -44,13 +46,65 @@ class NotificationScheduler {
             }
         }
 
-        // Schedule repeating alarm
-        alarmManager.setRepeating(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            AlarmManager.INTERVAL_DAY,
-            pendingIntent
+        // Schedule repeating alarm using more reliable method for newer Android versions
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setRepeating(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                AlarmManager.INTERVAL_DAY,
+                pendingIntent
+            )
+        }
+    }
+
+    // Schedule daily expense summary notification (11 PM every day)
+    fun scheduleDailyExpenseSummary(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            action = ACTION_DAILY_SUMMARY
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_SUMMARY,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        // Set time to 11 PM
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = System.currentTimeMillis()
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+
+            // If it's already past 11 PM, schedule for tomorrow
+            if (timeInMillis <= System.currentTimeMillis()) {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+        }
+
+        // Schedule repeating alarm using more reliable method for newer Android versions
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setRepeating(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                AlarmManager.INTERVAL_DAY,
+                pendingIntent
+            )
+        }
     }
 
     // Schedule monthly backup reminder (1st day of each month)
@@ -77,13 +131,20 @@ class NotificationScheduler {
             set(Calendar.SECOND, 0)
         }
 
-        // Schedule repeating alarm - approximately monthly
-        // We'll need to reschedule this each time since months have different lengths
-        alarmManager.set(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            pendingIntent
-        )
+        // Schedule using more reliable method for newer Android versions
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+        } else {
+            alarmManager.set(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+        }
     }
 
     // Cancel scheduled notifications
@@ -102,6 +163,18 @@ class NotificationScheduler {
         )
         alarmManager.cancel(dailyPendingIntent)
 
+        // Cancel daily summary
+        val summaryIntent = Intent(context, NotificationReceiver::class.java).apply {
+            action = ACTION_DAILY_SUMMARY
+        }
+        val summaryPendingIntent = PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_SUMMARY,
+            summaryIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(summaryPendingIntent)
+
         // Cancel backup reminder
         val backupIntent = Intent(context, NotificationReceiver::class.java).apply {
             action = ACTION_BACKUP_REMINDER
@@ -113,24 +186,5 @@ class NotificationScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(backupPendingIntent)
-    }
-
-    // BroadcastReceiver to receive alarm events and show notifications
-    class NotificationReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val notificationHelper = NotificationHelper(context)
-
-            when (intent.action) {
-                ACTION_DAILY_REMINDER -> {
-                    notificationHelper.showDailyExpenseReminder()
-                }
-                ACTION_BACKUP_REMINDER -> {
-                    notificationHelper.showBackupReminder()
-
-                    // Reschedule for next month after this notification fires
-                    NotificationScheduler().scheduleMonthlyBackupReminder(context)
-                }
-            }
-        }
     }
 }

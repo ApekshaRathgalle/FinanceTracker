@@ -10,6 +10,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import android.widget.ImageView
+import android.text.method.PasswordTransformationMethod
+import android.text.method.HideReturnsTransformationMethod
 
 class Signup : AppCompatActivity() {
 
@@ -19,6 +22,10 @@ class Signup : AppCompatActivity() {
     private lateinit var termsCheckBox: CheckBox
     private lateinit var signupButton: Button
     private lateinit var alreadyHaveAccountText: TextView
+    private lateinit var passwordVisibilityToggle: ImageView
+    private lateinit var confirmPasswordVisibilityToggle: ImageView
+    private var isPasswordVisible = false
+    private var isConfirmPasswordVisible = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +39,17 @@ class Signup : AppCompatActivity() {
         termsCheckBox = findViewById(R.id.termsCheckbox)
         signupButton = findViewById(R.id.signUpButton)
         alreadyHaveAccountText = findViewById(R.id.alreadyHaveAccount)
+        passwordVisibilityToggle = findViewById(R.id.passwordVisibility)
+        confirmPasswordVisibilityToggle = findViewById(R.id.confirmPasswordVisibility)
+
+        // Setup password visibility toggles
+        passwordVisibilityToggle.setOnClickListener {
+            togglePasswordVisibility()
+        }
+
+        confirmPasswordVisibilityToggle.setOnClickListener {
+            toggleConfirmPasswordVisibility()
+        }
 
         // Button click for Signup
         signupButton.setOnClickListener {
@@ -57,12 +75,45 @@ class Signup : AppCompatActivity() {
             }
         }
 
-
         alreadyHaveAccountText.setOnClickListener {
             val intent = Intent(this, Login::class.java)
             startActivity(intent)
             finish()
         }
+    }
+
+    private fun togglePasswordVisibility() {
+        isPasswordVisible = !isPasswordVisible
+        
+        if (isPasswordVisible) {
+            // Show password
+            passwordEditText.transformationMethod = HideReturnsTransformationMethod.getInstance()
+            passwordVisibilityToggle.setImageResource(R.drawable.ic_visibility_off)
+        } else {
+            // Hide password
+            passwordEditText.transformationMethod = PasswordTransformationMethod.getInstance()
+            passwordVisibilityToggle.setImageResource(R.drawable.ic_visibility)
+        }
+        
+        // Maintain cursor position
+        passwordEditText.setSelection(passwordEditText.text.length)
+    }
+
+    private fun toggleConfirmPasswordVisibility() {
+        isConfirmPasswordVisible = !isConfirmPasswordVisible
+        
+        if (isConfirmPasswordVisible) {
+            // Show password
+            confirmPasswordEditText.transformationMethod = HideReturnsTransformationMethod.getInstance()
+            confirmPasswordVisibilityToggle.setImageResource(R.drawable.ic_visibility_off)
+        } else {
+            // Hide password
+            confirmPasswordEditText.transformationMethod = PasswordTransformationMethod.getInstance()
+            confirmPasswordVisibilityToggle.setImageResource(R.drawable.ic_visibility)
+        }
+        
+        // Maintain cursor position
+        confirmPasswordEditText.setSelection(confirmPasswordEditText.text.length)
     }
 
     private fun saveUserCredentials(email: String, password: String) {

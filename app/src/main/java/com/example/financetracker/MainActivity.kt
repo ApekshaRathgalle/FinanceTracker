@@ -23,6 +23,6 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, launchScreen1::class.java)
             startActivity(intent)
             finish() // Close this activity so user can't go back to splash screen
-        }, 5000) // 5000 milliseconds = 5 seconds
+        }, 3000)
     }
 }

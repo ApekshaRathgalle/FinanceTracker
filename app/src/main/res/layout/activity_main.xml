@@ -9,35 +9,14 @@
     tools:context=".MainActivity">
 
     <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="86dp"
-        android:layout_height="82dp"
-        android:layout_marginTop="36dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.129"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/animationView"
-        app:srcCompat="@drawable/dollars" />
-
-    <ImageView
-        android:id="@+id/imageView2"
-        android:layout_width="108dp"
-        android:layout_height="81dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.155"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/imageView"
-        app:srcCompat="@drawable/dollars" />
-
-    <ImageView
         android:id="@+id/imageView3"
         android:layout_width="128dp"
         android:layout_height="80dp"
-        android:layout_marginTop="26dp"
+        app:layout_constraintBottom_toBottomOf="@+id/animationView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.215"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView"
+        app:layout_constraintTop_toTopOf="@+id/animationView"
         app:srcCompat="@drawable/dollars" />
 
     <com.airbnb.lottie.LottieAnimationView
@@ -57,12 +36,13 @@
         android:id="@+id/imageView5"
         android:layout_width="144dp"
         android:layout_height="57dp"
-        android:layout_marginBottom="19dp"
+        android:layout_marginBottom="12dp"
         app:layout_constraintBottom_toTopOf="@+id/imageView6"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.647"
+        app:layout_constraintHorizontal_bias="0.861"
         app:layout_constraintStart_toStartOf="parent"
         app:srcCompat="@drawable/dollars" />
+
 
     <ImageView
         android:id="@+id/imageView6"
@@ -74,8 +54,8 @@
         app:layout_constraintHorizontal_bias="0.512"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imageView3"
+        app:layout_constraintVertical_bias="0.0"
         app:srcCompat="@drawable/logo" />
-
 
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/animationView2"

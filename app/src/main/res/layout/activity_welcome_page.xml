@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:backgroundTint="@color/green">
 
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/animationView"
@@ -22,7 +22,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/welcomeTextView"
-        android:textColor="@color/colorPrimary"
+        android:textColor="@color/black"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -39,7 +39,7 @@
         android:layout_marginEnd="40dp"
         android:gravity="center"
         android:text="@string/subtitleTextView"
-        android:textColor="@color/colorPrimary"
+        android:textColor="@color/black"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -52,8 +52,7 @@
         android:layout_marginStart="40dp"
         android:layout_marginEnd="40dp"
         android:layout_marginBottom="20dp"
-        android:background="@drawable/primary_button_background"
-        android:backgroundTint="@color/colorPrimary"
+        android:backgroundTint="@color/green"
         android:backgroundTintMode="src_in"
         android:elevation="2dp"
         android:stateListAnimator="@null"
@@ -75,7 +74,6 @@
         android:layout_marginStart="40dp"
         android:layout_marginEnd="40dp"
         android:layout_marginBottom="96dp"
-        android:background="@drawable/secondary_button_background"
         android:backgroundTint="@color/colorPrimary"
         android:backgroundTintMode="src_in"
         android:elevation="1dp"

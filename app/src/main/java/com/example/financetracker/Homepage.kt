@@ -47,6 +47,7 @@ import android.view.LayoutInflater
 import org.json.JSONObject
 import java.util.Date
 import java.util.Comparator
+import android.app.AlarmManager
 
 class Homepage : AppCompatActivity() {
     private lateinit var sharedPreferences: SharedPreferences
@@ -276,15 +277,39 @@ class Homepage : AppCompatActivity() {
 
     private fun initializeNotifications() {
         // Create notification channels
-        NotificationHelper(this)
+        val notificationHelper = NotificationHelper(this)
+
+        // Check for alarm permissions on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!isExactAlarmPermissionGranted()) {
+                requestExactAlarmPermission()
+            }
+        }
 
         // Schedule periodic notifications
         val scheduler = NotificationScheduler()
         scheduler.scheduleDailyExpenseReminder(this)
         scheduler.scheduleMonthlyBackupReminder(this)
+        scheduler.scheduleDailyExpenseSummary(this)  // Schedule daily expense summary at 11 PM
 
         // Initial budget check
         BudgetMonitor(this).checkAllWallets()
+    }
+    
+    private fun isExactAlarmPermissionGranted(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            return alarmManager.canScheduleExactAlarms()
+        }
+        return true
+    }
+    
+    private fun requestExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+            intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+            startActivity(intent)
+        }
     }
 
     private fun setupBottomNavigation() {
@@ -641,6 +666,9 @@ class Homepage : AppCompatActivity() {
     private fun loadRecentTransactions() {
         // Clear existing transactions
         recentTransactionsContainer.removeAllViews()
+        
+        // Style the recent transactions container
+        recentTransactionsContainer.setPadding(8, 8, 8, 8)
 
         // Create a list to store all transactions from all wallets
         val allTransactions = mutableListOf<Pair<JSONObject, String>>() // Pair of (transaction, walletName)
@@ -683,7 +711,8 @@ class Homepage : AppCompatActivity() {
                         text = "No transactions yet. Add your first transaction!"
                         textSize = 16f
                         gravity = android.view.Gravity.CENTER
-                        setPadding(0, 16, 0, 16)
+                        setPadding(0, 32, 0, 32)
+                        setTextColor(Color.parseColor("#757575"))
                     }
                     recentTransactionsContainer.addView(noTransactionsView)
                 } else {
@@ -704,7 +733,8 @@ class Homepage : AppCompatActivity() {
                     text = "Could not load transactions."
                     textSize = 16f
                     gravity = android.view.Gravity.CENTER
-                    setPadding(0, 16, 0, 16)
+                    setPadding(0, 32, 0, 32)
+                    setTextColor(Color.parseColor("#F44336"))
                 }
                 recentTransactionsContainer.addView(errorView)
             }
@@ -714,16 +744,17 @@ class Homepage : AppCompatActivity() {
                 text = "No wallets found. Create one in Budget section."
                 textSize = 16f
                 gravity = android.view.Gravity.CENTER
-                setPadding(0, 16, 0, 16)
+                setPadding(0, 32, 0, 32)
+                setTextColor(Color.parseColor("#757575"))
             }
             recentTransactionsContainer.addView(noWalletsView)
         }
     }
 
     private fun addTransactionToUI(transaction: JSONObject, walletName: String) {
-        // Inflate transaction item layout
+        // Inflate transaction item layout using the homepage-specific layout
         val transactionView = LayoutInflater.from(this)
-            .inflate(R.layout.transaction_item, recentTransactionsContainer, false)
+            .inflate(R.layout.homepage_transaction_item, recentTransactionsContainer, false)
 
         // Get data from transaction
         val name = transaction.getString("name")
@@ -773,6 +804,27 @@ class Homepage : AppCompatActivity() {
         // Set category icon
         val iconResId = categoryIcons[category] ?: R.drawable.donations // fallback icon
         categoryIcon.setImageResource(iconResId)
+        
+        // Set custom background color for category icon based on category
+        val iconContainer = transactionView.findViewById<CardView>(R.id.icon_container)
+        
+        // Assign different background colors based on category
+        when (category) {
+            "Essentials" -> iconContainer.setCardBackgroundColor(Color.parseColor("#E8F5E9")) // Light green
+            "Savings" -> iconContainer.setCardBackgroundColor(Color.parseColor("#E3F2FD")) // Light blue
+            "Pets" -> iconContainer.setCardBackgroundColor(Color.parseColor("#FFF3E0")) // Light orange
+            "Health" -> iconContainer.setCardBackgroundColor(Color.parseColor("#E1F5FE")) // Light sky blue
+            "Donations" -> iconContainer.setCardBackgroundColor(Color.parseColor("#F3E5F5")) // Light purple
+            "Entertainment" -> iconContainer.setCardBackgroundColor(Color.parseColor("#FFEBEE")) // Light red
+            "Food" -> iconContainer.setCardBackgroundColor(Color.parseColor("#FFF8E1")) // Light amber
+            else -> iconContainer.setCardBackgroundColor(Color.parseColor("#E8F5E9")) // Default light green
+        }
+
+        // Make entire transaction card clickable to view transaction details
+        transactionView.setOnClickListener {
+            val intent = Intent(this, Transactions::class.java)
+            startActivity(intent)
+        }
 
         // Add transaction view to container
         recentTransactionsContainer.addView(transactionView)

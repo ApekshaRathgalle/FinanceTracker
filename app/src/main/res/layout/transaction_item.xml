@@ -107,12 +107,25 @@
             android:layout_height="wrap_content"
             android:textSize="18sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@id/btn_delete_transaction"
+            app:layout_constraintEnd_toStartOf="@id/btn_edit_transaction"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             android:layout_marginEnd="8dp"
             tools:text="-$24.99"
             tools:textColor="#F44336" />
+
+        <ImageButton
+            android:id="@+id/btn_edit_transaction"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_edit"
+            android:contentDescription="Edit transaction"
+            app:layout_constraintEnd_toStartOf="@id/btn_delete_transaction"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginEnd="8dp"
+            app:tint="#2196F3" />
 
         <ImageButton
             android:id="@+id/btn_delete_transaction"

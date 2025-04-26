@@ -416,9 +416,18 @@
                 android:id="@+id/add_transaction_button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="8dp"
                 android:backgroundTint="@color/green"
                 android:text="Add New Transaction"
+                android:textColor="@color/white" />
+
+            <Button
+                android:id="@+id/add_monthly_transaction_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:backgroundTint="@color/blue"
+                android:text="Add Monthly Transaction"
                 android:textColor="@color/white" />
 
             <LinearLayout

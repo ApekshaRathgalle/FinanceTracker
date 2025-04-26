@@ -78,6 +78,12 @@ class Transactions : AppCompatActivity() {
             showAddTransactionDialog()
         }
 
+        // Set up add monthly transaction button
+        val addMonthlyTransactionButton = findViewById<Button>(R.id.add_monthly_transaction_button)
+        addMonthlyTransactionButton.setOnClickListener {
+            showAddMonthlyTransactionDialog()
+        }
+
         // Set up category card click listeners
         setupCategoryClickListeners()
 
@@ -89,6 +95,9 @@ class Transactions : AppCompatActivity() {
 
         // Load transactions for the current wallet
         loadTransactions()
+        
+        // Schedule monthly transactions to be processed
+        processMonthlyTransactions()
     }
 
     private fun setupCategoryClickListeners() {
@@ -225,6 +234,88 @@ class Transactions : AppCompatActivity() {
             .show()
     }
 
+    private fun showAddMonthlyTransactionDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_monthly_transaction, null)
+
+        val transactionNameEditText = dialogView.findViewById<EditText>(R.id.edit_monthly_transaction_name)
+        val amountEditText = dialogView.findViewById<EditText>(R.id.edit_monthly_amount)
+        val isIncomeCheckBox = dialogView.findViewById<CheckBox>(R.id.checkbox_monthly_is_income)
+        val categorySpinner = dialogView.findViewById<Spinner>(R.id.spinner_monthly_category)
+        val walletSpinner = dialogView.findViewById<Spinner>(R.id.spinner_monthly_wallet)
+        val dayEditText = dialogView.findViewById<EditText>(R.id.edit_monthly_day)
+
+        // Set up category spinner
+        val categories = listOf("Essentials", "Savings", "Pets", "Health", "Donations", "Entertainment", "Food")
+        val categoryAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, categories)
+        categorySpinner.adapter = categoryAdapter
+
+        // Get list of wallets from SharedPreferences
+        val walletsJson = sharedPreferences.getString("wallets", null)
+        val walletsList = mutableListOf<String>()
+
+        if (walletsJson != null) {
+            try {
+                val jsonArray = JSONArray(walletsJson)
+                for (i in 0 until jsonArray.length()) {
+                    val wallet = jsonArray.getJSONObject(i)
+                    walletsList.add(wallet.getString("name"))
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error loading wallets", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // If no wallets, use just the current wallet
+        if (walletsList.isEmpty()) {
+            walletsList.add(currentWallet)
+        }
+
+        // Set up wallet spinner
+        val walletAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, walletsList)
+        walletSpinner.adapter = walletAdapter
+        
+        // Set current wallet as default
+        val currentWalletIndex = walletsList.indexOf(currentWallet)
+        if (currentWalletIndex >= 0) {
+            walletSpinner.setSelection(currentWalletIndex)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Add Monthly Transaction")
+            .setView(dialogView)
+            .setPositiveButton("Add") { _, _ ->
+                val transactionName = transactionNameEditText.text.toString()
+                val amountText = amountEditText.text.toString()
+                val isIncome = isIncomeCheckBox.isChecked
+                val category = categorySpinner.selectedItem.toString()
+                val walletName = walletSpinner.selectedItem.toString()
+                val dayText = dayEditText.text.toString()
+
+                if (transactionName.isNotEmpty() && amountText.isNotEmpty() && dayText.isNotEmpty()) {
+                    try {
+                        val amount = amountText.toDouble()
+                        val day = dayText.toInt()
+                        
+                        // Validate day of month
+                        if (day in 1..31) {
+                            addNewMonthlyTransaction(transactionName, amount, isIncome, category, walletName, day)
+                        } else {
+                            Toast.makeText(this, "Please enter a valid day (1-31)", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: NumberFormatException) {
+                        Toast.makeText(this, "Please enter valid numbers", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .setNeutralButton("Manage Monthly Transactions") { _, _ ->
+                // Navigate to MonthlyTransactionsActivity
+                startActivity(Intent(this, MonthlyTransactionsActivity::class.java))
+            }
+            .show()
+    }
 
     private fun addNewTransaction(name: String, amount: Double, isIncome: Boolean, category: String, date: String) {
         // Create transaction object
@@ -267,6 +358,7 @@ class Transactions : AppCompatActivity() {
 
         Toast.makeText(this, "Transaction added successfully", Toast.LENGTH_SHORT).show()
     }
+
     private fun updateWalletBalance(amount: Double, isIncome: Boolean) {
         // Get wallets from SharedPreferences
         val walletsJson = sharedPreferences.getString("wallets", null) ?: return
@@ -409,6 +501,7 @@ class Transactions : AppCompatActivity() {
         val categoryIcon = transactionView.findViewById<ImageView>(R.id.transaction_category_icon)
         val dateTextView = transactionView.findViewById<TextView>(R.id.transaction_date)
         val deleteButton = transactionView.findViewById<ImageButton>(R.id.btn_delete_transaction)
+        val editButton = transactionView.findViewById<ImageButton>(R.id.btn_edit_transaction)
 
         nameTextView.text = name
         categoryTextView.text = category
@@ -446,6 +539,11 @@ class Transactions : AppCompatActivity() {
         // Set up delete button click listener
         deleteButton.setOnClickListener {
             showDeleteConfirmationDialog(transaction)
+        }
+        
+        // Set up edit button click listener
+        editButton.setOnClickListener {
+            showEditTransactionDialog(transaction)
         }
 
         // Add transaction view to container
@@ -563,6 +661,148 @@ class Transactions : AppCompatActivity() {
         }
     }
 
+    private fun showEditTransactionDialog(transaction: JSONObject) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_transaction, null)
+
+        val transactionNameEditText = dialogView.findViewById<EditText>(R.id.edit_transaction_name)
+        val amountEditText = dialogView.findViewById<EditText>(R.id.edit_amount)
+        val isIncomeCheckBox = dialogView.findViewById<CheckBox>(R.id.checkbox_is_income)
+        val categorySpinner = dialogView.findViewById<Spinner>(R.id.spinner_category)
+        val dateEditText = dialogView.findViewById<EditText>(R.id.edit_transaction_date)
+        val timeEditText = dialogView.findViewById<EditText>(R.id.edit_transaction_time)
+
+        // Fill with current transaction data
+        transactionNameEditText.setText(transaction.getString("name"))
+        amountEditText.setText(transaction.getDouble("amount").toString())
+        isIncomeCheckBox.isChecked = transaction.getBoolean("isIncome")
+        
+        // Parse date and time
+        val dateTimeString = transaction.getString("date")
+        try {
+            val dateTime = dateFormat.parse(dateTimeString)
+            if (dateTime != null) {
+                dateEditText.setText(dateOnlyFormat.format(dateTime))
+                timeEditText.setText(timeOnlyFormat.format(dateTime))
+            } else {
+                // Fallback to showing as is
+                dateEditText.setText(dateTimeString.split(" ")[0])
+                timeEditText.setText(if (dateTimeString.contains(" ")) dateTimeString.split(" ")[1] else "00:00")
+            }
+        } catch (e: Exception) {
+            // Handle older format or errors
+            dateEditText.setText(dateTimeString)
+            timeEditText.setText("00:00")
+        }
+
+        // Set up category spinner
+        val categories = listOf("Essentials", "Savings", "Pets", "Health", "Donations", "Entertainment", "Food")
+        val categoryAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, categories)
+        categorySpinner.adapter = categoryAdapter
+        
+        // Set selected category
+        val categoryPosition = categories.indexOf(transaction.getString("category"))
+        if (categoryPosition >= 0) {
+            categorySpinner.setSelection(categoryPosition)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Edit Transaction")
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = transactionNameEditText.text.toString()
+                val newAmountText = amountEditText.text.toString()
+                val newIsIncome = isIncomeCheckBox.isChecked
+                val newCategory = categorySpinner.selectedItem.toString()
+                val newDateText = dateEditText.text.toString()
+                val newTimeText = timeEditText.text.toString()
+
+                if (newName.isNotEmpty() && newAmountText.isNotEmpty() && newDateText.isNotEmpty() && newTimeText.isNotEmpty()) {
+                    try {
+                        val newAmount = newAmountText.toDouble()
+                        // Validate date and time format
+                        try {
+                            val newDateTime = "$newDateText $newTimeText"
+                            dateFormat.parse(newDateTime)
+                            updateTransaction(transaction, newName, newAmount, newIsIncome, newCategory, newDateTime)
+                        } catch (e: Exception) {
+                            Toast.makeText(this, "Please enter a valid date (yyyy-MM-dd) and time (HH:mm)", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: NumberFormatException) {
+                        Toast.makeText(this, "Please enter a valid amount", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun updateTransaction(oldTransaction: JSONObject, newName: String, newAmount: Double, 
+                                 newIsIncome: Boolean, newCategory: String, newDate: String) {
+        // First, restore the old transaction's effect on the wallet balance
+        restoreWalletBalance(oldTransaction.getDouble("amount"), oldTransaction.getBoolean("isIncome"))
+        
+        // Get current transactions for this wallet
+        val transactionsKey = "transactions_$currentWallet"
+        val transactionsJson = sharedPreferences.getString(transactionsKey, null) ?: return
+        
+        try {
+            val transactionsArray = JSONArray(transactionsJson)
+            var found = false
+            
+            // Find the transaction to update
+            for (i in 0 until transactionsArray.length()) {
+                val transaction = transactionsArray.getJSONObject(i)
+                
+                // Check if this is the transaction we want to update
+                if (!found && 
+                    transaction.getString("name") == oldTransaction.getString("name") &&
+                    transaction.getDouble("amount") == oldTransaction.getDouble("amount") &&
+                    transaction.getString("date") == oldTransaction.getString("date") &&
+                    transaction.getString("category") == oldTransaction.getString("category")) {
+                    
+                    // Create updated transaction object
+                    val updatedTransaction = JSONObject().apply {
+                        put("name", newName)
+                        put("amount", newAmount)
+                        put("isIncome", newIsIncome)
+                        put("category", newCategory)
+                        put("date", newDate)
+                        // Keep the original timestamp
+                        put("timestamp", transaction.optLong("timestamp", System.currentTimeMillis()))
+                    }
+                    
+                    // Replace old transaction with updated one
+                    transactionsArray.put(i, updatedTransaction)
+                    found = true
+                }
+            }
+            
+            // Save updated transactions list
+            if (found) {
+                sharedPreferences.edit()
+                    .putString(transactionsKey, transactionsArray.toString())
+                    .apply()
+                
+                // Update wallet balance with the new transaction
+                updateWalletBalance(newAmount, newIsIncome)
+                
+                // Check budget status after updating the transaction
+                BudgetMonitor(this).checkAllWallets()
+                
+                // Reload transactions
+                loadTransactions()
+                
+                Toast.makeText(this, "Transaction updated successfully", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Error updating transaction", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error updating transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun setupBottomNavigation() {
         val bottomNavigation = findViewById<BottomNavigationView>(R.id.bottom_navigation)
 
@@ -597,6 +837,166 @@ class Transactions : AppCompatActivity() {
                 }
                 else -> false
             }
+        }
+    }
+
+    private fun addNewMonthlyTransaction(name: String, amount: Double, isIncome: Boolean, 
+                                        category: String, walletName: String, dayOfMonth: Int) {
+        // Create monthly transaction object
+        val monthlyTransaction = JSONObject().apply {
+            put("name", name)
+            put("amount", amount)
+            put("isIncome", isIncome)
+            put("category", category)
+            put("wallet", walletName)
+            put("dayOfMonth", dayOfMonth)
+            put("isActive", true)
+            put("createdAt", System.currentTimeMillis())
+        }
+
+        // Get current monthly transactions
+        val monthlyTransactionsJson = sharedPreferences.getString("monthly_transactions", null)
+        val monthlyTransactionsArray = if (monthlyTransactionsJson != null) {
+            JSONArray(monthlyTransactionsJson)
+        } else {
+            JSONArray()
+        }
+
+        // Add new monthly transaction
+        monthlyTransactionsArray.put(monthlyTransaction)
+
+        // Save updated monthly transactions
+        sharedPreferences.edit()
+            .putString("monthly_transactions", monthlyTransactionsArray.toString())
+            .apply()
+
+        Toast.makeText(this, "Monthly transaction added successfully", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun processMonthlyTransactions() {
+        // Get current monthly transactions
+        val monthlyTransactionsJson = sharedPreferences.getString("monthly_transactions", null) ?: return
+        
+        try {
+            val monthlyTransactionsArray = JSONArray(monthlyTransactionsJson)
+            val calendar = Calendar.getInstance()
+            val today = calendar.get(Calendar.DAY_OF_MONTH)
+            
+            // Get the last processed day from SharedPreferences
+            val lastProcessedDay = sharedPreferences.getInt("last_processed_day", -1)
+            
+            // Only process if we haven't already processed today
+            if (lastProcessedDay != today) {
+                // Loop through monthly transactions
+                for (i in 0 until monthlyTransactionsArray.length()) {
+                    val monthlyTransaction = monthlyTransactionsArray.getJSONObject(i)
+                    
+                    // Check if transaction is active
+                    if (monthlyTransaction.getBoolean("isActive")) {
+                        val dayOfMonth = monthlyTransaction.getInt("dayOfMonth")
+                        
+                        // If today is the day to process this transaction
+                        if (today == dayOfMonth) {
+                            // Get transaction details
+                            val name = monthlyTransaction.getString("name")
+                            val amount = monthlyTransaction.getDouble("amount")
+                            val isIncome = monthlyTransaction.getBoolean("isIncome")
+                            val category = monthlyTransaction.getString("category")
+                            val walletName = monthlyTransaction.getString("wallet")
+                            
+                            // Create a transaction for this month
+                            val transaction = JSONObject().apply {
+                                put("name", name + " (Monthly)")
+                                put("amount", amount)
+                                put("isIncome", isIncome)
+                                put("category", category)
+                                put("date", dateFormat.format(Date()))
+                                put("timestamp", System.currentTimeMillis())
+                            }
+                            
+                            // Get current transactions for the wallet
+                            val transactionsKey = "transactions_$walletName"
+                            val transactionsJson = sharedPreferences.getString(transactionsKey, null)
+                            val transactionsArray = if (transactionsJson != null) {
+                                JSONArray(transactionsJson)
+                            } else {
+                                JSONArray()
+                            }
+                            
+                            // Add new transaction
+                            transactionsArray.put(transaction)
+                            
+                            // Save updated transactions
+                            sharedPreferences.edit()
+                                .putString(transactionsKey, transactionsArray.toString())
+                                .apply()
+                            
+                            // Update wallet balance
+                            updateWalletBalanceByName(walletName, amount, isIncome)
+                        }
+                    }
+                }
+                
+                // Update last processed day
+                sharedPreferences.edit()
+                    .putInt("last_processed_day", today)
+                    .apply()
+                
+                // Check budget status after processing monthly transactions
+                BudgetMonitor(this).checkAllWallets()
+                
+                // Reload transactions if we processed any for the current wallet
+                loadTransactions()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error processing monthly transactions", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun updateWalletBalanceByName(walletName: String, amount: Double, isIncome: Boolean) {
+        // Get wallets from SharedPreferences
+        val walletsJson = sharedPreferences.getString("wallets", null) ?: return
+
+        try {
+            val jsonArray = JSONArray(walletsJson)
+            var walletIndex = -1
+
+            // Find the wallet by name
+            for (i in 0 until jsonArray.length()) {
+                val wallet = jsonArray.getJSONObject(i)
+                if (wallet.getString("name") == walletName) {
+                    walletIndex = i
+                    break
+                }
+            }
+
+            if (walletIndex != -1) {
+                // Update wallet data
+                val wallet = jsonArray.getJSONObject(walletIndex)
+                val initialAmount = wallet.getDouble("initialAmount")
+                var expenses = wallet.getDouble("expenses")
+                var remaining = wallet.getDouble("remaining")
+
+                // Update values based on transaction type
+                if (isIncome) {
+                    remaining += amount
+                } else {
+                    expenses += amount
+                    remaining -= amount
+                }
+
+                // Update JSON object
+                wallet.put("expenses", expenses)
+                wallet.put("remaining", remaining)
+                jsonArray.put(walletIndex, wallet)
+
+                // Save to SharedPreferences
+                sharedPreferences.edit()
+                    .putString("wallets", jsonArray.toString())
+                    .apply()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error updating wallet balance", Toast.LENGTH_SHORT).show()
         }
     }
 }

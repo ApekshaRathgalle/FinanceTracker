@@ -25,8 +25,7 @@ class welcome : AppCompatActivity() {
         signUpButton = findViewById(R.id.signUpButton)
         loginButton = findViewById(R.id.loginButton)
 
-        // Set initial styles
-        setupButtonStyles()
+        
 
         // Set click listener for signup button with visual feedback
         signUpButton.setOnClickListener {
@@ -60,19 +59,6 @@ class welcome : AppCompatActivity() {
         }
     }
 
-    private fun setupButtonStyles() {
-        // Set signup button style (green background with white text)
-        signUpButton.setBackgroundResource(R.drawable.primary_button_background)
-        signUpButton.setTextColor(Color.WHITE)
-
-        // Set login button style (white background with black text)
-        loginButton.setBackgroundResource(R.drawable.secondary_button_background)
-        loginButton.setTextColor(Color.BLACK)
-
-        // Add touch listeners for additional visual feedback
-        addTouchFeedback(signUpButton)
-        addTouchFeedback(loginButton)
-    }
 
     private fun addTouchFeedback(button: Button) {
         button.setOnTouchListener { v, event ->
