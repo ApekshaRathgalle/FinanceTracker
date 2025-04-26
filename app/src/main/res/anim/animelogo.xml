@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fillAfter="true"
+    android:interpolator="@android:anim/accelerate_decelerate_interpolator">
+
+    <!-- Initial fade in -->
+    <alpha
+        android:duration="800"
+        android:fromAlpha="0.4"
+        android:toAlpha="1.0" />
+
+    <!-- Upward growth animation like a rising stock chart -->
+    <scale
+        android:duration="1200"
+        android:fromXScale="0.85"
+        android:fromYScale="0.85"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:startOffset="300"
+        android:toXScale="1.0"
+        android:toYScale="1.0" />
+
+    <!-- Slight bounce effect to simulate money/profits bouncing up -->
+    <translate
+        android:duration="700"
+        android:fromYDelta="0%"
+        android:startOffset="1500"
+        android:toYDelta="-3%"
+        android:repeatMode="reverse"
+        android:repeatCount="1" />
+
+    <!-- Gentle pulse like counting money/heartbeat of finances -->
+    <scale
+        android:duration="800"
+        android:fromXScale="1.0"
+        android:fromYScale="1.0"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:startOffset="2200"
+        android:toXScale="1.08"
+        android:toYScale="1.08"
+        android:repeatMode="reverse"
+        android:repeatCount="1" />
+
+    <!-- Final shimmer effect - slight rotation back and forth -->
+    <rotate
+        android:duration="400"
+        android:fromDegrees="0"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:startOffset="3800"
+        android:toDegrees="2"
+        android:repeatMode="reverse"
+        android:repeatCount="1" />
+</set>

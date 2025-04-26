@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Finance Tracker</string>
+    <string name="subtitleTextView">Track Your expenses here</string>
+    <string name="welcomeTextView">Welcome To BUDGI</string>
+    <string name="signUpButton">Sign up</string>
+    <string name="loginButton">Login</string>
+
+    <string name="wave_text1">Track your spending today</string>
+    <string name="wave_text2">big differences in saving</string>
+    <string name="wave_text3">Financial clarity begins with a single transaction</string>
+</resources>

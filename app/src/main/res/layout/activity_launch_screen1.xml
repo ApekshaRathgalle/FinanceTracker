@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF">
+
+    <!-- Image that fills the entire screen above the wave shape -->
+    <ImageView
+        android:id="@+id/launch_image"
+        android:layout_width="match_parent"
+        android:layout_height="678dp"
+
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="0dp"
+        android:layout_marginBottom="0dp"
+        android:contentDescription="Launch screen image"
+        android:scaleType="centerCrop"
+        android:src="@drawable/launch" />
+
+
+
+        <!-- Your wave shape -->
+
+    <!-- Next arrow button -->
+
+    <ImageView
+        android:id="@+id/wave_shape"
+        android:layout_width="match_parent"
+        android:layout_height="199dp"
+        android:layout_alignTop="@+id/next_button2"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="-110dp"
+        android:layout_marginBottom="-6dp"
+        android:contentDescription="Wave background"
+        android:scaleType="fitXY"
+        android:src="@drawable/wave" />
+
+    <ImageButton
+        android:id="@+id/next_button2"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="14dp"
+        android:layout_marginBottom="11dp"
+        android:background="@drawable/circle_background"
+        android:contentDescription="Next button"
+        android:src="@drawable/arrow_next" />
+
+</RelativeLayout>

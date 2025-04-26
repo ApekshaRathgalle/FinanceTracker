@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp"
+    android:height="180dp"
+    android:viewportWidth="360"
+    android:viewportHeight="180">
+
+    <!-- Black base curve -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M0,0 L0,100 C90,200 270,0 360,100 L360,0 Z"/>
+
+    <!-- Green accent wave -->
+    <path
+        android:fillColor="#4CAF50"
+        android:fillAlpha="0.7"
+        android:pathData="M0,0 L0,80 C100,170 260,20 360,90 L360,0 Z"/>
+</vector>
