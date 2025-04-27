@@ -219,12 +219,22 @@
                         android:id="@+id/expense_section_title"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="All Wallets Summary"
+                        android:text="All Wallets Expenses"
                         android:textColor="@android:color/black"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/expense_section_subtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Weekly expense summary across all wallets"
+                        android:textColor="#757575"
+                        android:textSize="12sp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/expense_section_title" />
 
                     <LinearLayout
                         android:id="@+id/expense_info"
@@ -261,7 +271,7 @@
                         android:layout_height="250dp"
                         android:layout_marginTop="16dp"
                         android:elevation="4dp"
-                        app:layout_constraintTop_toBottomOf="@id/expense_section_title"
+                        app:layout_constraintTop_toBottomOf="@id/expense_section_subtitle"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -304,6 +314,52 @@
                                 android:layout_marginTop="4dp" />
                         </LinearLayout>
                     </androidx.cardview.widget.CardView>
+
+                    <!-- Legend for the expense graph -->
+                    <LinearLayout
+                        android:id="@+id/expense_legend"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="16dp"
+                        app:layout_constraintTop_toBottomOf="@id/expense_tooltip">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Daily expenses for all wallets"
+                            android:textSize="12sp"
+                            android:textColor="#757575"
+                            android:drawableStart="@drawable/ic_expense"
+                            android:drawablePadding="4dp"
+                            android:drawableTint="#E57373"/>
+                    </LinearLayout>
+
+                    <!-- Wallet expense distribution -->
+                    <TextView
+                        android:id="@+id/wallet_distribution_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Expense Distribution"
+                        android:textColor="@android:color/black"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="16dp"
+                        app:layout_constraintTop_toBottomOf="@id/expense_legend"
+                        app:layout_constraintStart_toStartOf="parent"/>
+
+                    <LinearLayout
+                        android:id="@+id/wallet_distribution_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="8dp"
+                        app:layout_constraintTop_toBottomOf="@id/wallet_distribution_title"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent">
+                        <!-- Wallet distribution items will be added here programmatically -->
+                    </LinearLayout>
                 </androidx.constraintlayout.widget.ConstraintLayout>
                 
                 <!-- Recent Transactions Section -->
@@ -338,6 +394,16 @@
                             app:layout_constraintTop_toTopOf="parent" />
 
                         <TextView
+                            android:id="@+id/recent_transactions_subtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="From all wallets"
+                            android:textColor="#757575"
+                            android:textSize="12sp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/recent_transactions_title" />
+
+                        <TextView
                             android:id="@+id/see_all_transactions"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -355,7 +421,21 @@
                             android:layout_height="1dp"
                             android:background="#E0E0E0"
                             android:layout_marginTop="8dp"
-                            app:layout_constraintTop_toBottomOf="@id/recent_transactions_title"/>
+                            app:layout_constraintTop_toBottomOf="@id/recent_transactions_subtitle"/>
+
+                        <TextView
+                            android:id="@+id/no_transactions_text"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="No transactions yet. Add your first transaction!"
+                            android:textSize="16sp"
+                            android:textAlignment="center"
+                            android:textColor="#757575"
+                            android:padding="32dp"
+                            android:visibility="gone"
+                            app:layout_constraintTop_toBottomOf="@id/divider"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"/>
 
                         <LinearLayout
                             android:id="@+id/recent_transactions_container"
@@ -368,6 +448,18 @@
                             app:layout_constraintEnd_toEndOf="parent">
                             <!-- Transactions will be added programmatically -->
                         </LinearLayout>
+
+                        <ProgressBar
+                            android:id="@+id/transactions_loading"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone"
+                            app:layout_constraintTop_toBottomOf="@id/divider"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            android:layout_marginTop="24dp"
+                            android:layout_marginBottom="24dp"/>
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
                 </androidx.cardview.widget.CardView>

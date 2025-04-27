@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
@@ -12,6 +14,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import org.json.JSONArray
 import org.json.JSONObject
@@ -98,6 +101,17 @@ class Transactions : AppCompatActivity() {
         
         // Schedule monthly transactions to be processed
         processMonthlyTransactions()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        
+        // Check if any transactions were processed by other activities
+        val dataChanged = sharedPreferences.getBoolean("transaction_data_changed", false)
+        if (dataChanged) {
+            // Reload the current wallet data
+            loadTransactions()
+        }
     }
 
     private fun setupCategoryClickListeners() {
@@ -219,7 +233,7 @@ class Transactions : AppCompatActivity() {
                         try {
                             val dateTimeText = "$dateText $timeText"
                             dateFormat.parse(dateTimeText)
-                            addNewTransaction(transactionName, amount, isIncome, category, dateTimeText)
+                            addTransaction(transactionName, amount, isIncome, category)
                         } catch (e: Exception) {
                             Toast.makeText(this, "Please enter a valid date (yyyy-MM-dd) and time (HH:mm)", Toast.LENGTH_SHORT).show()
                         }
@@ -317,20 +331,27 @@ class Transactions : AppCompatActivity() {
             .show()
     }
 
-    private fun addNewTransaction(name: String, amount: Double, isIncome: Boolean, category: String, date: String) {
-        // Create transaction object
+    /**
+     * Add a new transaction to the SharedPreferences
+     */
+    private fun addTransaction(name: String, amount: Double, isIncome: Boolean, category: String) {
+        // Get today's date
+        val currentDateTime = Calendar.getInstance().time
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val formattedDate = dateFormat.format(currentDateTime)
+        val timestamp = System.currentTimeMillis()
+
+        // Create JSON object for the transaction
         val transaction = JSONObject().apply {
             put("name", name)
             put("amount", amount)
             put("isIncome", isIncome)
             put("category", category)
-            put("date", date)
-            
-            // Add timestamp for sorting
-            put("timestamp", System.currentTimeMillis())
+            put("date", formattedDate)
+            put("timestamp", timestamp) // Add timestamp for sorting and relative time display
         }
 
-        // Get current transactions for this wallet
+        // Get existing transactions for this wallet
         val transactionsKey = "transactions_$currentWallet"
         val transactionsJson = sharedPreferences.getString(transactionsKey, null)
         val transactionsArray = if (transactionsJson != null) {
@@ -355,6 +376,38 @@ class Transactions : AppCompatActivity() {
 
         // Reload transactions to show the new one
         loadTransactions()
+
+        // Set a flag in SharedPreferences to notify Homepage to refresh the graph
+        // Ensure we have a unique timestamp so changes are always detected
+        val updateTimestamp = System.currentTimeMillis()
+        sharedPreferences.edit()
+            .putBoolean("transaction_data_changed", true)
+            .putLong("last_transaction_update", updateTimestamp)
+            .apply()
+
+        // Send a broadcast to inform all components about the transaction update
+        try {
+            val intent = Intent("com.example.financetracker.TRANSACTION_UPDATED")
+            // Add data to intent to prevent empty broadcast issues
+            intent.putExtra("timestamp", updateTimestamp)
+            intent.putExtra("action", "add_transaction")
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+            
+            // Also send a global broadcast as fallback
+            applicationContext.sendBroadcast(intent)
+        } catch (e: Exception) {
+            // Log the error but continue - the SharedPreferences flag is our backup
+            e.printStackTrace()
+        }
+
+        // Force a stronger sync approach - commit instead of apply for flags
+        sharedPreferences.edit()
+            .putBoolean("transaction_data_changed", true)
+            .putLong("last_transaction_update", updateTimestamp)
+            .commit() // Use commit for immediate effect
+
+        // Don't delay the navigation back - it may be causing issues
+        navigateToHomepageWithRefresh()
 
         Toast.makeText(this, "Transaction added successfully", Toast.LENGTH_SHORT).show()
     }
@@ -403,6 +456,46 @@ class Transactions : AppCompatActivity() {
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Error updating wallet balance", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Navigate back to Homepage with a flag to immediately refresh the graph
+     */
+    private fun navigateToHomepageWithRefresh() {
+        // Check if the user is navigating to transactions from the homepage
+        val bottomNavigation = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        
+        // Set a flag in SharedPreferences to trigger an immediate refresh
+        // Use a unique timestamp to ensure the update is detected
+        val currentTime = System.currentTimeMillis()
+        sharedPreferences.edit()
+            .putBoolean("transaction_data_changed", true)
+            .putLong("last_transaction_update", currentTime)
+            .putBoolean("immediate_refresh_needed", true)  // Additional flag for immediate refresh
+            .commit()  // Use commit for immediate disk write
+        
+        try {
+            // Send a strong broadcast to force an update
+            val intent = Intent("com.example.financetracker.TRANSACTION_UPDATED")
+            intent.putExtra("timestamp", currentTime)
+            intent.putExtra("action", "navigate_back")
+            intent.putExtra("force_refresh", true)
+            // Send both local and global broadcasts
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+            applicationContext.sendBroadcast(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        // If the selected item is the transactions tab, navigate back to homepage
+        if (bottomNavigation.selectedItemId == R.id.nav_add_transaction) {
+            // Create an explicit intent to Homepage with flags to clear task
+            val intent = Intent(this, Homepage::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+            intent.putExtra("refresh_needed", true)
+            startActivity(intent)
+            finish()
         }
     }
 
@@ -603,8 +696,22 @@ class Transactions : AppCompatActivity() {
                 // Check budget status after removing the transaction
                 BudgetMonitor(this).checkAllWallets()
 
+                // Set a flag in SharedPreferences to notify Homepage to refresh the graph
+                sharedPreferences.edit()
+                    .putBoolean("transaction_data_changed", true)
+                    .putLong("last_transaction_update", System.currentTimeMillis())
+                    .putBoolean("immediate_refresh_needed", true)
+                    .apply()
+
+                // Send a broadcast to inform all components about the transaction update
+                val intent = Intent("com.example.financetracker.TRANSACTION_UPDATED")
+                LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+
                 // Reload transactions
                 loadTransactions()
+                
+                // Offer to navigate back to homepage with refresh
+                navigateToHomepageWithRefresh()
 
                 Toast.makeText(this, "Transaction deleted successfully", Toast.LENGTH_SHORT).show()
             }
@@ -791,8 +898,22 @@ class Transactions : AppCompatActivity() {
                 // Check budget status after updating the transaction
                 BudgetMonitor(this).checkAllWallets()
                 
+                // Set a flag in SharedPreferences to notify Homepage to refresh the graph
+                sharedPreferences.edit()
+                    .putBoolean("transaction_data_changed", true)
+                    .putLong("last_transaction_update", System.currentTimeMillis())
+                    .putBoolean("immediate_refresh_needed", true)
+                    .apply()
+                
+                // Send a broadcast to inform all components about the transaction update
+                val intent = Intent("com.example.financetracker.TRANSACTION_UPDATED")
+                LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+                
                 // Reload transactions
                 loadTransactions()
+                
+                // Offer to navigate back to homepage with refresh
+                navigateToHomepageWithRefresh()
                 
                 Toast.makeText(this, "Transaction updated successfully", Toast.LENGTH_SHORT).show()
             } else {
@@ -887,6 +1008,8 @@ class Transactions : AppCompatActivity() {
             
             // Only process if we haven't already processed today
             if (lastProcessedDay != today) {
+                var transactionsProcessed = false
+                
                 // Loop through monthly transactions
                 for (i in 0 until monthlyTransactionsArray.length()) {
                     val monthlyTransaction = monthlyTransactionsArray.getJSONObject(i)
@@ -933,6 +1056,8 @@ class Transactions : AppCompatActivity() {
                             
                             // Update wallet balance
                             updateWalletBalanceByName(walletName, amount, isIncome)
+                            
+                            transactionsProcessed = true
                         }
                     }
                 }
@@ -941,6 +1066,14 @@ class Transactions : AppCompatActivity() {
                 sharedPreferences.edit()
                     .putInt("last_processed_day", today)
                     .apply()
+                
+                // Set update flag if transactions were processed
+                if (transactionsProcessed) {
+                    sharedPreferences.edit()
+                        .putBoolean("transaction_data_changed", true)
+                        .putLong("last_transaction_update", System.currentTimeMillis())
+                        .apply()
+                }
                 
                 // Check budget status after processing monthly transactions
                 BudgetMonitor(this).checkAllWallets()
